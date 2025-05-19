@@ -74,30 +74,31 @@ async def test_wildcard_blacklist_patterns(cwd_tmp_path):
                 "*.badwebsite.org",   # все поддомены
                 "tracker.*",          # все домены начинающиеся с tracker.
                 "*.test.*"            # домены содержащие .test.
-            ],
-            "blacklist_response_type": "REFUSED",
-            "redirect_ip": "127.0.0.1"}
-    
+    ],
+        "blacklist_response_type": "REFUSED",
+        "redirect_ip": "127.0.0.1"}
+
     cfg_file = Path("config.yaml")
     cfg_file.write_text(yaml.safe_dump(data))
 
     cfg = Config()
     await cfg.load_config()
-    
+
     # Проверка точного соответствия
     assert cfg.is_blacklisted("example.com") == True
     assert cfg.is_blacklisted("notexample.com") == False
-    
+
     # Проверка доменов с wildcard в начале
-    assert cfg.is_blacklisted("badwebsite.org") == False  # сам домен не блокируется
+    # сам домен не блокируется
+    assert cfg.is_blacklisted("badwebsite.org") == False
     assert cfg.is_blacklisted("sub.badwebsite.org") == True
     assert cfg.is_blacklisted("deep.sub.badwebsite.org") == True
-    
+
     # Проверка доменов с wildcard в конце
     assert cfg.is_blacklisted("tracker.com") == True
     assert cfg.is_blacklisted("tracker.org") == True
     assert cfg.is_blacklisted("mytracker.com") == False  # не блокируется
-    
+
     # Проверка доменов с wildcard в середине и по краям
     assert cfg.is_blacklisted("sub.test.com") == True
     assert cfg.is_blacklisted("my.test.org") == True

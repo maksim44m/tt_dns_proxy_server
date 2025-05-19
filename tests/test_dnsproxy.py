@@ -9,8 +9,10 @@ from config_process import Config
 class DummyTransport:
     def __init__(self):
         self.sent = []  # список (data, addr)
+
     def sendto(self, data, addr):
         self.sent.append((data, addr))
+
 
 def make_query(qname: str, id: int = 0x1234) -> bytes:
     # Заголовок: ID, QR=0,RD=1, QDCOUNT=1
@@ -21,6 +23,7 @@ def make_query(qname: str, id: int = 0x1234) -> bytes:
         for label in qname.split(".")
     ) + b"\x00" + struct.pack("!HH", 1, 1)
     return header + query
+
 
 @pytest.fixture
 def config():
@@ -33,11 +36,13 @@ def config():
         _reload_interval=10,
     )
 
+
 @pytest.fixture
 def proxy(config):
     p = DNSProxy(config)
     p.transport = DummyTransport()
     return p
+
 
 def test_parse_and_question_end(proxy):
     data = make_query("a.b")
@@ -46,12 +51,14 @@ def test_parse_and_question_end(proxy):
     # в end +1 - нулевой байт, +4 - QTYPE+QCLASS
     assert end == len(data)
 
+
 def test_get_flags_nxdomain(proxy):
     orig = struct.pack("!H", 0x0100)  # только RD=1
     flags = proxy._get_flags(orig)
     val = struct.unpack("!H", flags)[0]
     # QR|RD|RA|RCODE(3) = 0x8000+0x0100+0x0080+0x0003 = 0x8183
     assert val == 0x8183
+
 
 def test_build_error_response(proxy):
     # NXDOMAIN
@@ -68,6 +75,7 @@ def test_build_error_response(proxy):
     # тело вопроса (всё после первых 12 байт)
     assert resp[12:] == data[12:]
 
+
 def test_build_redirect_response(proxy):
     #  REDIRECT
     proxy.config.blacklist_rcode = 0x0000
@@ -83,12 +91,14 @@ def test_build_redirect_response(proxy):
     # A-запись с redirect_ip в конце
     assert resp[-4:] == socket.inet_aton(proxy.config.redirect_ip)
 
+
 def test_datagram_received_forward(proxy):
     data = make_query("ok.domain", id=0x3333)
     client = ("1.2.3.4", 9999)
     proxy.datagram_received(data, client)
     # должно уйти на upstream
     assert proxy.transport.sent == [(data, proxy.config.upstream)]
+
 
 def test_datagram_received_upstream_reply(proxy):
     # сначала клиент→прокси
@@ -99,6 +109,7 @@ def test_datagram_received_upstream_reply(proxy):
     proxy.datagram_received(data, proxy.config.upstream)
     # прокси вернёт клиенту тот же пакет
     assert proxy.transport.sent[-1] == (data, client)
+
 
 def test_datagram_received_block(proxy):
     data = make_query("block.domain", id=0x5555)

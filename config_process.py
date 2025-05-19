@@ -33,12 +33,12 @@ class Config:
         self.upstream = (cfg["upstream"]["host"], cfg["upstream"]["port"])
         self.blacklist = cfg["blacklist"]
         # Преобразование шаблонов доменов в регулярные выражения
-        self.blacklist_patterns = []
-        for domain in self.blacklist:
-            # Преобразуем шаблон домена в паттерн регулярного выражения
-            pattern = self._convert_wildcard_to_regex(domain)
-            self.blacklist_patterns.append(re.compile(pattern))
-        
+        new_patterns = [
+            re.compile(self._convert_wildcard_to_regex(domain))
+            for domain in self.blacklist
+        ]
+
+        self.blacklist_patterns = new_patterns
         response_type = cfg["blacklist_response_type"]
         if response_type == "NXDOMAIN":
             self.blacklist_rcode = 0x0003
@@ -48,7 +48,8 @@ class Config:
             self.blacklist_rcode = 0x0000
 
         self.redirect_ip = cfg["redirect_ip"]
-        self._reload_interval = cfg.get("reload_interval", self._reload_interval)
+        self._reload_interval = cfg.get(
+            "reload_interval", self._reload_interval)
 
     def _convert_wildcard_to_regex(self, domain: str) -> str:
         """Преобразование шаблона с wildcard в регулярное выражение."""
@@ -62,11 +63,10 @@ class Config:
         # Проверка на точное совпадение
         if domain in self.blacklist:
             return True
-        
+
         # Проверка на соответствие шаблонам
         for pattern in self.blacklist_patterns:
             if pattern.match(domain):
                 return True
-        
-        return False
 
+        return False
